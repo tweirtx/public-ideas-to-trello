@@ -10,6 +10,7 @@ config = {
     'trello_list_id': "Put the ID of the Trello list that new cards should be created in here",
     'discord_channel_id': "Put the ID of the Discord channel you want to get public ideas from here",
     'discord_reactions_message': "Put the ID of the message with all the reactions you want to purge here",
+    'rule_reminder_message': 'Put the ID of the message you want to be sent to remind people of the rules here',
     'trello_api_secret': "Put your Trello secret here",
     'trello_token': "Insert your Trello token here"
 }
@@ -31,6 +32,15 @@ trellobot = trello.TrelloClient(
 )
 
 
+async def description_reminder(ctx):
+    authors = []
+    async for message in ctx.channel.history(limit=20):
+        authors.append(message.author)
+    if bot.user not in authors:
+        what_to_send = await ctx.channel.get_message(id=config['rule_reminder_message'])
+        await ctx.channel.send(what_to_send.content)
+
+
 @bot.event
 async def on_ready():
     print("Ready!")
@@ -38,12 +48,26 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    if message.author.bot:
+        return
     await bot.process_commands(message)
     if str(message.channel.id) == config['discord_channel_id']:
         author_info = "{}#{} ({})".format(message.author.name, message.author.discriminator, message.author.id)
         idea = message.clean_content
         trellobot.get_list(config['trello_list_id']).add_card(idea, author_info)
+        await description_reminder(message)
         await message.add_reaction('\N{SQUARED OK}')
+
+
+@bot.event
+async def on_message_edit(before, after):
+    if before.author.bot:
+        return
+    if str(before.channel.id) == config['discord_channel_id']:
+        print(before.content)
+        trello_card = trellobot.search(before.content)
+        print(trello_card)
+        trello_card.set_name(after.content)
 
 
 @bot.command()
