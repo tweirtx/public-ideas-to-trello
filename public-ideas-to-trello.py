@@ -64,10 +64,14 @@ async def on_message_edit(before, after):
     if before.author.bot:
         return
     if str(before.channel.id) == config['discord_channel_id']:
-        print(before.content)
-        trello_card = trellobot.search(before.content)
-        print(trello_card)
-        trello_card.set_name(after.content)
+        card = trellobot.search(before.content)[0]
+        print(card)
+        card.set_name(after.content)
+
+
+@bot.command()
+async def testtrellosearch(ctx, what_to_search_for):
+    await ctx.send(trellobot.search(what_to_search_for))
 
 
 @bot.command()
@@ -89,5 +93,6 @@ async def purge(ctx):
     coros = [channel.delete_messages(bulk_delete[i:i + 100]) for i in range(0, len(bulk_delete), 100)]
     coros.extend(m.delete() for m in single_delete)
     return len(bulk_delete), len(single_delete), len(coros)
+
 
 bot.run(config['discord_token'])
